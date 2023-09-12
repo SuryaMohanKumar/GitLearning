@@ -1,27 +1,23 @@
 ---
-- name: Check Power Status via IPMI
+- name: Check and Restart HTTPS Service Interactively
   hosts: your_target_hosts
   gather_facts: no
-  vars_prompt:
-    - name: ipmi_username
-      prompt: "Enter IPMI Username"
-      private: no
-
-    - name: ipmi_password
-      prompt: "Enter IPMI Password"
-      private: yes
+  become: yes
   tasks:
-    - name: Get Power Status
-      ipmi_power:
-        state: status
-        host: "{{ ipmi_host }}"
-        username: "{{ ipmi_username }}"
-        password: "{{ ipmi_password }}"
-        interface: lanplus
-      delegate_to: localhost
-      register: power_status
+    - name: Check HTTPS Service Status
+      systemd:
+        name: httpd  # Replace with 'nginx' if using Nginx
+      register: service_status
+      ignore_errors: yes  # To prevent playbook failure if the service is not found
 
-    - name: Display Power Status
-      debug:
-        var: power_status.msg
+    - name: Prompt for Service Restart
+      pause:
+        prompt: "The HTTPS service is not running. Do you want to restart it? (yes/no): "
+      register: user_input
+
+    - name: Restart HTTPS Service
+      systemd:
+        name: httpd  # Replace with 'nginx' if using Nginx
+        state: restarted
+      when: user_input.user_input | lower == "yes" or service_status.failed
       

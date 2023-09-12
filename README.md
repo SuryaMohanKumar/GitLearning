@@ -1,32 +1,27 @@
 ---
-- name: Check and Remove Kernel
+- name: Check Power Status via IPMI
   hosts: your_target_hosts
-  gather_facts: yes
+  gather_facts: no
+  vars_prompt:
+    - name: ipmi_username
+      prompt: "Enter IPMI Username"
+      private: no
+
+    - name: ipmi_password
+      prompt: "Enter IPMI Password"
+      private: yes
   tasks:
-    - name: Get Current Kernel Version
-      command: uname -r
-      register: current_kernel
+    - name: Get Power Status
+      ipmi_power:
+        state: status
+        host: "{{ ipmi_host }}"
+        username: "{{ ipmi_username }}"
+        password: "{{ ipmi_password }}"
+        interface: lanplus
+      delegate_to: localhost
+      register: power_status
 
-    - name: Display Current Kernel Version
+    - name: Display Power Status
       debug:
-        var: current_kernel.stdout
-
-    - name: List Installed Kernels
-      command: rpm -q kernel --queryformat '%{version}-%{release}.%{arch}\n'
-      register: installed_kernels
-
-    - name: Display Installed Kernels
-      debug:
-        var: installed_kernels.stdout_lines
-
-    - name: Prompt for Kernel Removal
-      pause:
-        prompt: "Enter the kernel version to remove (e.g., 4.18.0-305.el8.x86_64): "
-      register: selected_kernel
-
-    - name: Remove Selected Kernel
-      yum:
-        name: "kernel-{{ selected_kernel.user_input }}"
-        state: absent
-      when: selected_kernel.user_input != '' and selected_kernel.user_input in installed_kernels.stdout_lines
+        var: power_status.msg
       
